@@ -1,0 +1,20 @@
+#!/bin/bash
+
+#set -x
+
+#!/bin/bash
+
+# Set the VM name and zone
+VM_NAME="ofirkaitel-playground-us-central-1-debian"
+ZONE="us-central1-a"
+
+# Check if the VM is running
+if gcloud compute instances describe "$VM_NAME" --project $PROJECT --zone="$ZONE" --format="value(status)" 2>/dev/null | grep -q "RUNNING"; then
+    echo "VM is already running. Connecting using SSH..."
+else
+    echo "VM is not running. Starting VM and connecting using SSH..."
+    gcloud compute instances start "$VM_NAME" --zone="$ZONE" --project $PROJECT --quiet
+fi
+
+# Connect to VM using SSH
+ssh ofir_kaitel_kodemsecurity_com@ofirkaitel-playground-us-central-1-debian

@@ -1,0 +1,7 @@
+#!/bin/bash
+
+#set -x
+
+# get sesnor name from first argument
+sensor=$1
+kubectl logs -f -l app=$sensor --tail -1 | lnav

@@ -1,0 +1,92 @@
+#! bash
+set -e
+
+default_sensor="komon"
+user="ofirkaitel"
+host_user="kaitel"
+
+set_sensor() {
+    if [[ $# -eq 0 ]]; then
+        sensor=$default_sensor
+    elif [[ "$1" == "komon" || "$1" == "koltan" || "$1" == "komet" ]]; then
+        sensor=$1
+    else
+        echo "No such sensor. Must be one of 'komon', 'koltan', or 'komet'" >&2
+        exit 1
+    fi
+}
+
+parse_arguments() {
+    for arg in "$@"; do
+      case $arg in
+        -q)
+          quiet="--quiet"
+          ;;
+        *)
+          ;;
+      esac
+    done
+}
+
+display_spinner() {
+    local delay=0.1
+    local spin_chars=('-' '\' '|' '/')
+    local message=$1
+
+    while :; do
+        for char in "${spin_chars[@]}"; do
+            echo -ne "\r$message $char"
+            sleep "$delay"
+        done
+    done
+}
+
+build_docker_with_spinner() {
+    build_output=$(docker buildx build --platform linux/amd64 --ssh=default="/Users/$host_user/.ssh/id_ed25519" $quiet --load -t $sensor . 2>&1) &
+    build_pid=$!    
+    (display_spinner "Building $sensor on branch $branch on the vm...") &
+    spinner_pid=$!
+    wait $build_pid &> /dev/null
+    kill $spinner_pid &> /dev/null
+    echo -e "\nDone building $sensor"
+}
+
+tag_and_push_image() {
+    new_tag="us-central1-docker.pkg.dev/kodem-private-artifacts/kodemsec-testing/$user:$sensor-$branch.$(date +%s)"
+    docker tag $sensor "$new_tag"
+    docker push "$new_tag" $quiet
+    echo "Pushed to $new_tag"
+}
+
+patch_resource() {
+    if [[ "$sensor" == "komon" ]]; then
+        resource_type="daemonset"
+    elif [[ "$sensor" == "koltan" ]]; then
+        resource_type="statefulset"
+    elif [[ "$sensor" == "komet" ]]; then
+        resource_type="deployment"
+    fi
+
+    echo "Patching $sensor $resource_type..."
+    patch="{\"spec\": {\"template\": {\"spec\": {\"containers\": [{\"name\":\"$sensor\",\"image\": \"$new_tag\"}]}}}}"
+    kubectl patch "$resource_type" "$sensor" --patch "$patch"
+    echo "Done patching $sensor $resource_type"
+}
+
+# Main script execution
+current_dir=$(pwd)
+
+set_sensor "$@"
+parse_arguments "$@"
+
+build_dir="/Users/$host_user/git/$sensor"
+cd "$build_dir"
+branch=$(git rev-parse --abbrev-ref HEAD)
+
+# build_docker_with_spinner
+export LOG_LEVEL=DEBUG # this would make sure the watchdog runs in debug mode
+docker buildx build --platform linux/amd64 --ssh=default="/Users/$host_user/.ssh/id_ed25519" $quiet --load -t $sensor . 2>&1
+tag_and_push_image
+patch_resource
+
+trap 'cd "$current_dir"' EXIT

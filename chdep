@@ -1,0 +1,24 @@
+#!/bin/bash
+
+set -e
+
+exit-error() {
+    echo "Error: $1"
+    exit 1
+}
+
+package=$1
+
+[ -z "$package" ] && echo "Usage: chdep.sh <package-name>" && exit-error "Package name is required"
+[ ! -f go.mod ] && exit-error "go.mod file not found"
+! grep -q "\bgithub.com/kodemsec/$package\b" go.mod && exit-error "Package not found in go.mod"
+
+# get local branch name
+branch=$(git rev-parse --abbrev-ref HEAD)
+if [ -z "$branch" ]; then
+    exit-error "Failed to get current branch name"
+fi
+
+# sed looks like that because in macos it messes up with the -i flag
+sed -i.bak "s/${package} .*/${package} ${branch}/" go.mod && rm go.mod.bak
+go mod tidy
