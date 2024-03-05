@@ -52,7 +52,7 @@ build_docker_with_spinner() {
 }
 
 tag_and_push_image() {
-    new_tag="us-central1-docker.pkg.dev/kodem-private-artifacts/kodemsec-testing/$user:$sensor-$branch.$(date +%s)"
+    new_tag="us-central1-docker.pkg.dev/kodem-playground/kodemsec-playground/$user:$sensor-$branch.$(date +%s)"
     docker tag $sensor "$new_tag"
     docker push "$new_tag" $quiet
     echo "Pushed to $new_tag"
