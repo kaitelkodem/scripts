@@ -1,0 +1,14 @@
+#!/bin/bash
+
+jcli() {
+    [ -z "$JENKINS_CLI" ]       && { echo "JENKINS_CLI is not set"; return 1; }
+    [ -z "$JENKINS_URL" ]       && { echo "JENKINS_URL is not set"; return 1; }
+    [ -z "$JENKINS_USER_ID" ]   && { echo "JENKINS_USER_ID is not set"; return 1; }
+    [ -z "$JENKINS_API_TOKEN" ] && { echo "JENKINS_API_TOKEN is not set"; return 1; }
+
+    java -jar $JENKINS_CLI "$@"
+}
+
+pg_env() {
+    jcli build 'Playground Environments/playground-start-env/main'
+}
