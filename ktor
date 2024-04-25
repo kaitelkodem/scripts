@@ -8,7 +8,7 @@ host_user="kaitel"
 set_sensor() {
     if [[ $# -eq 0 ]]; then
         sensor=$default_sensor
-    elif [[ "$1" == "komon" || "$1" == "koltan" || "$1" == "komet" ]]; then
+    elif [[ "$1" == "komon" || "$1" == "koltan" || "$1" == "komet" || "$1" == "kortex-verificator" ]]; then
         sensor=$1
     else
         echo "No such sensor. Must be one of 'komon', 'koltan', or 'komet'" >&2
@@ -63,14 +63,20 @@ patch_resource() {
         resource_type="daemonset"
     elif [[ "$sensor" == "koltan" ]]; then
         resource_type="statefulset"
-    elif [[ "$sensor" == "komet" ]]; then
+    elif [[ "$sensor" == "komet" || "$sensor" == "kortex-verificator" ]]; then
         resource_type="deployment"
     fi
 
-    echo "Patching $sensor $resource_type..."
+    if [[ "$sensor" == "kortex-verificator" ]]; then
+        resource_name="kortex-verificator-deployment"
+    else 
+        resource_name=$sensor
+    fi
+
+    echo "Patching $resource_name $resource_type..."
     patch="{\"spec\": {\"template\": {\"spec\": {\"containers\": [{\"name\":\"$sensor\",\"image\": \"$new_tag\"}]}}}}"
-    kubectl patch "$resource_type" "$sensor" --patch "$patch"
-    echo "Done patching $sensor $resource_type"
+    kubectl patch "$resource_type" "$resource_name" --patch "$patch"
+    echo "Done patching $resource_name $resource_type"
 }
 
 # Main script execution
